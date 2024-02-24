@@ -178,3 +178,40 @@ if (ctor.prototype && ctor.prototype.isPureReactComponent) {
 }
 
 ```
+
+## ReactCreateRef
+createRef 创建一个不可变的ref对象
+```js
+// an immutable object with a single mutable value
+export function createRef(): RefObject {
+  const refObject = {
+    current: null,
+  };
+  if (__DEV__) {
+    Object.seal(refObject);
+  }
+  return refObject;
+}
+
+
+```
+
+## fowardRef
+forwardRef是用来解决HOC组件传递ref的问题
+
+```js
+export function forwardRef<Props, ElementType: React$ElementType>(
+  render: (props: Props, ref: React$Ref<ElementType>) => React$Node,
+) {
+  // ...
+  const elementType = {
+    $$typeof: REACT_FORWARD_REF_TYPE,
+    render,
+  };
+  // ...
+
+  return elementType;
+}
+
+
+```
