@@ -76,3 +76,56 @@ To help you get your feet wet and get you familiar with our contribution process
 ### License
 
 React is [MIT licensed](./LICENSE).
+
+
+### React 入口
+packages/react/index.js
+
+ 
+## ReactElement
+packages/react/src/ReactClient.js
+ReactElement通过React.createElement(type,config,children)创建
+```
+ * Create and return a new ReactElement of the given type.
+ * See https://reactjs.org/docs/react-api.html#createelement
+ * @param {*} type - React Element 类型, such as HostComponent PureComponent  Functional Component , react原生提供的Fragment
+ * @param {*} config - 要设置的元素的公共对象属性, 如key, ref，attrs,但key和ref不会与其他属性一起处理会分开单独处理
+ * @param {*} children - 元素的子节点，或子节点数组
+export function createElement(type, config, children) {
+  // 处理参数
+
+  return ReactElement(
+    type,
+    key,
+    ref,
+    self,
+    source,
+    ReactCurrentOwner.current,
+    props,
+  );
+}
+
+const ReactElement = function(type, key, ref, self, source, owner, props) {
+  const element = {
+    // This tag allows us to uniquely identify this as a React Element
+    $$typeof: REACT_ELEMENT_TYPE,
+
+    // Built-in properties that belong on the element
+    type: type,
+    key: key,
+    ref: ref,
+    props: props,
+
+    // Record the component responsible for creating this element.
+    _owner: owner,
+  };
+
+  return element
+}
+```
+
+ReactElement只是一个用来承载信息的容器，他会告诉后续的操作这个节点的以下信息：
+type类型，用于判断如何创建节点
+key和ref这些特殊信息
+props新的属性内容
+$$typeof用于确定是否属于ReactElement

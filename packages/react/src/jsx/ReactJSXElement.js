@@ -602,6 +602,9 @@ export function jsxDEV(type, config, maybeKey, isStaticChildren, source, self) {
 /**
  * Create and return a new ReactElement of the given type.
  * See https://reactjs.org/docs/react-api.html#createelement
+ * @param {*} type - React Element 类型, such as HostComponent PureComponent  Functional Component , react原生提供的Fragment
+ * @param {*} config - 要设置的元素的公共对象属性, 如key, ref，attrs,但key和ref不会与其他属性一起处理会分开单独处理
+ * @param {*} children - 元素的子节点，或子节点数组
  */
 export function createElement(type, config, children) {
   if (__DEV__) {
