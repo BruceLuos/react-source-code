@@ -85,12 +85,13 @@ packages/react/index.js
 ## ReactElement
 packages/react/src/ReactClient.js
 ReactElement通过React.createElement(type,config,children)创建
-```
- * Create and return a new ReactElement of the given type.
- * See https://reactjs.org/docs/react-api.html#createelement
- * @param {*} type - React Element 类型, such as HostComponent PureComponent  Functional Component , react原生提供的Fragment
- * @param {*} config - 要设置的元素的公共对象属性, 如key, ref，attrs,但key和ref不会与其他属性一起处理会分开单独处理
- * @param {*} children - 元素的子节点，或子节点数组
+```js
+
+// type - React Element 类型, such as HostComponent PureComponent  Functional Component , react原生提供的Fragment
+
+// config - 要设置的元素的公共对象属性, 如key, ref，attrs,但key和ref不会与其他属性一起处理会分开单独处理
+
+// children - 元素的子节点，或子节点数组
 export function createElement(type, config, children) {
   // 处理参数
 
@@ -125,7 +126,55 @@ const ReactElement = function(type, key, ref, self, source, owner, props) {
 ```
 
 ReactElement只是一个用来承载信息的容器，他会告诉后续的操作这个节点的以下信息：
-type类型，用于判断如何创建节点
-key和ref这些特殊信息
-props新的属性内容
-$$typeof用于确定是否属于ReactElement
+1. type类型，用于判断如何创建节点
+2. key和ref这些特殊信息
+3. props新的属性内容
+4. '$$typeof用于确定是否属于ReactElement'
+
+## 类组件中的Component 和 PureComponent
+packages/react/src/ReactBaseClasses.js
+
+```js
+
+function Component(props, context, updater) {
+  this.props = props;
+  this.context = context;
+  // If a component has string refs, we will assign a different object later.
+  this.refs = emptyObject;
+  // We initialize the default updater but the real one gets injected by the
+  // renderer.
+  this.updater = updater || ReactNoopUpdateQueue;
+}
+
+function ComponentDummy() {}
+ComponentDummy.prototype = Component.prototype;
+
+/**
+ * Convenience component with default shallow equality check for sCU.
+ */
+function PureComponent(props, context, updater) {
+  this.props = props;
+  this.context = context;
+  // If a component has string refs, we will assign a different object later.
+  this.refs = emptyObject;
+  this.updater = updater || ReactNoopUpdateQueue;
+}
+
+const pureComponentPrototype = (PureComponent.prototype = new ComponentDummy());
+pureComponentPrototype.constructor = PureComponent;
+// Avoid an extra prototype jump for these methods.
+assign(pureComponentPrototype, Component.prototype);
+
+// 这里就是Component 跟 PureReactComponent 的不同，多了一个标识isPureReactComponent
+pureComponentPrototype.isPureReactComponent = true;
+
+```
+有标识isPureReactComponent来判断类组件是否需要更新
+```js
+if (ctor.prototype && ctor.prototype.isPureReactComponent) {
+  return (
+    !shallowEqual(oldProps, newProps) || !shallowEqual(oldState, newState)
+  );
+}
+
+```
