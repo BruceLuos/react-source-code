@@ -271,3 +271,35 @@ export function createContext<T>(defaultValue: T): ReactContext<T> {
 
 
 ```
+
+## ReactMemo
+类组件通过包裹memo函数并传入compare函数来实现PureComponent的功能
+浅比较props来判断是否需要更新。
+
+```js
+export function memo<Props>(
+  type: React$ElementType,
+  compare?: (oldProps: Props, newProps: Props) => boolean,
+) {
+  if (__DEV__) {
+    if (!isValidElementType(type)) {
+      console.error(
+        'memo: The first argument must be a component. Instead ' +
+          'received: %s',
+        type === null ? 'null' : typeof type,
+      );
+    }
+  }
+  const elementType = {
+    $$typeof: REACT_MEMO_TYPE,
+    type,
+    compare: compare === undefined ? null : compare,
+  };
+  if (__DEV__) {
+    // ...
+  }
+  return elementType;
+}
+
+
+```
