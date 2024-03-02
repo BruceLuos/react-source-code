@@ -78,7 +78,8 @@ To help you get your feet wet and get you familiar with our contribution process
 React is [MIT licensed](./LICENSE).
 
 
-### React 入口
+# React常见api
+## React 入口
 packages/react/index.js
 
  
@@ -302,4 +303,178 @@ export function memo<Props>(
 }
 
 
+```
+
+# React中的更新
+
+## 创建更新的方法
+1. ReactDom.render || hydrate
+2. setState
+3. forceUpdate
+
+### ReactDom.render
+/Users/bruceluo/Desktop/Study/react-source-code/packages/react-dom/src/client/ReactDOM.js
+创建ReactRoot
+创建FiberRoot,RootFiber
+创建更新
+
+ReactDom.render 18之前
+ReactDom.createRoot 18以后  /Users/bruceluo/Desktop/Study/react-source-code/packages/react-dom/src/client/ReactDOMRoot.js
+
+```jsx
+
+/**
+ * element 元素 如:<App/>
+ * container 容器载体 如:dom.getElementById('root')
+ */
+export function render(
+  element: React$Element<any>,
+  container: Container,
+  callback: ?Function,
+): React$Component<any, any> | PublicInstance | null {
+  if (__DEV__) {
+    console.error(
+      'ReactDOM.render is no longer supported in React 18. Use createRoot ' +
+        'instead. Until you switch to the new API, your app will behave as ' +
+        "if it's running React 17. Learn " +
+        'more: https://reactjs.org/link/switch-to-createroot',
+    );
+  }
+
+  if (!isValidContainerLegacy(container)) {
+    throw new Error('Target container is not a DOM element.');
+  }
+
+  if (__DEV__) {
+    const isModernRoot =
+      isContainerMarkedAsRoot(container) &&
+      container._reactRootContainer === undefined;
+    if (isModernRoot) {
+      console.error(
+        'You are calling ReactDOM.render() on a container that was previously ' +
+          'passed to ReactDOMClient.createRoot(). This is not supported. ' +
+          'Did you mean to call root.render(element)?',
+      );
+    }
+  }
+  return legacyRenderSubtreeIntoContainer(
+    null,
+    element,
+    container,
+    false,
+    callback,
+  );
+}
+
+/**
+ * forceHydrate 水合，服务端使用，方便调和节点是否可以重复使用
+ */
+function legacyRenderSubtreeIntoContainer(
+  parentComponent: ?React$Component<any, any>,
+  children: ReactNodeList,
+  container: Container,
+  forceHydrate: boolean,
+  callback: ?Function,
+): React$Component<any, any> | PublicInstance | null {
+  if (__DEV__) {
+    topLevelUpdateWarnings(container);
+    warnOnInvalidCallback(callback === undefined ? null : callback, 'render');
+  }
+
+  const maybeRoot = container._reactRootContainer;
+  let root: FiberRoot;
+  // 初始化没有_reactRootContainer
+  if (!maybeRoot) {
+    // Initial mount
+    // 创建容器的根节点
+    root = legacyCreateRootFromDOMContainer(
+      container,
+      children,
+      parentComponent,
+      callback,
+      forceHydrate,
+    );
+  } else {
+    root = maybeRoot;
+    if (typeof callback === 'function') {
+      const originalCallback = callback;
+      callback = function () {
+        const instance = getPublicRootInstance(root);
+        originalCallback.call(instance);
+      };
+    }
+    // Update
+    updateContainer(children, root, parentComponent, callback);
+  }
+  return getPublicRootInstance(root);
+}
+
+
+export function updateContainer(
+  element: ReactNodeList,
+  container: OpaqueRoot,
+  parentComponent: ?React$Component<any, any>,
+  callback: ?Function,
+): Lane {
+  if (__DEV__) {
+    onScheduleRoot(container, element);
+  }
+  const current = container.current;
+  const lane = requestUpdateLane(current);
+
+  if (enableSchedulingProfiler) {
+    markRenderScheduled(lane);
+  }
+
+  const context = getContextForSubtree(parentComponent);
+  if (container.context === null) {
+    container.context = context;
+  } else {
+    container.pendingContext = context;
+  }
+
+  if (__DEV__) {
+    if (
+      ReactCurrentFiberIsRendering &&
+      ReactCurrentFiberCurrent !== null &&
+      !didWarnAboutNestedUpdates
+    ) {
+      didWarnAboutNestedUpdates = true;
+      console.error(
+        'Render methods should be a pure function of props and state; ' +
+          'triggering nested component updates from render is not allowed. ' +
+          'If necessary, trigger nested updates in componentDidUpdate.\n\n' +
+          'Check the render method of %s.',
+        getComponentNameFromFiber(ReactCurrentFiberCurrent) || 'Unknown',
+      );
+    }
+  }
+
+  const update = createUpdate(lane);
+  // Caution: React DevTools currently depends on this property
+  // being called "element".
+  update.payload = {element};
+
+  callback = callback === undefined ? null : callback;
+  if (callback !== null) {
+    if (__DEV__) {
+      if (typeof callback !== 'function') {
+        console.error(
+          'render(...): Expected the last optional `callback` argument to be a ' +
+            'function. Instead received: %s.',
+          callback,
+        );
+      }
+    }
+    update.callback = callback;
+  }
+
+  const root = enqueueUpdate(current, update, lane);
+  if (root !== null) {
+    scheduleUpdateOnFiber(root, current, lane);
+    entangleTransitions(root, current, lane);
+  }
+
+  return lane;
+}
 ```
