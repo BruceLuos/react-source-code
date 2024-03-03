@@ -409,7 +409,7 @@ function legacyRenderSubtreeIntoContainer(
   return getPublicRootInstance(root);
 }
 
-
+// packages/react-reconciler/src/ReactFiberReconciler.js
 export function updateContainer(
   element: ReactNodeList,
   container: OpaqueRoot,
@@ -420,6 +420,7 @@ export function updateContainer(
     onScheduleRoot(container, element);
   }
   const current = container.current;
+  // 更新优先级
   const lane = requestUpdateLane(current);
 
   if (enableSchedulingProfiler) {
@@ -450,6 +451,7 @@ export function updateContainer(
     }
   }
 
+  // 标记更新
   const update = createUpdate(lane);
   // Caution: React DevTools currently depends on this property
   // being called "element".
@@ -477,4 +479,74 @@ export function updateContainer(
 
   return lane;
 }
+
+// packages/react-reconciler/src/ReactFiberClassUpdateQueue.js
+// 更新加入队列
+export function enqueueUpdate<State>(
+  fiber: Fiber,
+  update: Update<State>,
+  lane: Lane,
+): FiberRoot | null {
+  const updateQueue = fiber.updateQueue;
+  if (updateQueue === null) {
+    // Only occurs if the fiber has been unmounted.
+    return null;
+  }
+
+  const sharedQueue: SharedQueue<State> = (updateQueue: any).shared;
+
+  if (__DEV__) {
+    if (
+      currentlyProcessingQueue === sharedQueue &&
+      !didWarnUpdateInsideUpdate
+    ) {
+      const componentName = getComponentNameFromFiber(fiber);
+      console.error(
+        'An update (setState, replaceState, or forceUpdate) was scheduled ' +
+          'from inside an update function. Update functions should be pure, ' +
+          'with zero side-effects. Consider using componentDidUpdate or a ' +
+          'callback.\n\nPlease update the following component: %s',
+        componentName,
+      );
+      didWarnUpdateInsideUpdate = true;
+    }
+  }
+
+  if (isUnsafeClassRenderPhaseUpdate(fiber)) {
+    // This is an unsafe render phase update. Add directly to the update
+    // queue so we can process it immediately during the current render.
+    const pending = sharedQueue.pending;
+    if (pending === null) {
+      // This is the first update. Create a circular list.
+      update.next = update;
+    } else {
+      update.next = pending.next;
+      pending.next = update;
+    }
+    sharedQueue.pending = update;
+
+    // Update the childLanes even though we're most likely already rendering
+    // this fiber. This is for backwards compatibility in the case where you
+    // update a different component during render phase than the one that is
+    // currently renderings (a pattern that is accompanied by a warning).
+    return unsafe_markUpdateLaneFromFiberToRoot(fiber, lane);
+  } else {
+    return enqueueConcurrentClassUpdate(fiber, sharedQueue, update, lane);
+  }
+}
+
+// packages/react-reconciler/src/ReactFiberConcurrentUpdates.js
+// 将并发类更新加入队列
+export function enqueueConcurrentClassUpdate<State>(
+  fiber: Fiber,
+  queue: ClassQueue<State>,
+  update: ClassUpdate<State>,
+  lane: Lane,
+): FiberRoot | null {
+  const concurrentQueue: ConcurrentQueue = (queue: any);
+  const concurrentUpdate: ConcurrentUpdate = (update: any);
+  enqueueUpdate(fiber, concurrentQueue, concurrentUpdate, lane);
+  return getRootForUpdatedFiber(fiber);
+}
+
 ```
